@@ -6,8 +6,6 @@ Built as a portfolio project — deliberately small, runnable with three command
 
 ![FleetPulse dashboard](docs/screenshot.png)
 
-> This screenshot placeholder lives at `docs/screenshot.png`. See [`docs/README.md`](docs/README.md) for how to add your own.
-
 ![Stack](https://img.shields.io/badge/.NET-8-512BD4) ![Stack](https://img.shields.io/badge/Angular-19-DD0031) ![Stack](https://img.shields.io/badge/SQLite-default-003B57) ![Stack](https://img.shields.io/badge/SQL%20Server-optional-CC2927)
 
 ---
@@ -86,7 +84,7 @@ FleetPulse/
 ├── FleetPulse.sln
 ├── docker-compose.yml          optional SQL Server 2022
 ├── README.md
-├── docs/                       screenshot placeholder
+├── docs/                       screenshots
 └── src/
     ├── FleetPulse.Api/
     │   ├── Auth/               JWT, admin and enrollment options, token service
@@ -201,7 +199,7 @@ Tests run against an in-memory SQLite database and an in-process API, so they do
 | --- | --- |
 | `admin` | `Admin@123` |
 
-Credentials, the JWT signing key and the enrollment key in `src/FleetPulse.Api/appsettings.json` are **demo values only** and must be replaced for any real deployment.
+Credentials, the JWT signing key and the enrollment key in `src/FleetPulse.Api/appsettings.json` are **demo values only** and must be replaced for any real deployment. The SQL Server SA password in `docker-compose.yml` and `appsettings.SqlServer.json` is demo-only as well.
 
 ## API reference
 
