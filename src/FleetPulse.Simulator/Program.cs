@@ -7,8 +7,8 @@ var apiUrl = (args.Length > 0
         : Environment.GetEnvironmentVariable("FLEETPULSE_API") ?? "http://localhost:5080")
     .TrimEnd('/');
 
-const string DemoUsername = "admin";
-const string DemoPassword = "Admin@123";
+var enrollmentKey = Environment.GetEnvironmentVariable("FLEETPULSE_ENROLLMENT_KEY")
+                    ?? "fleetpulse-demo-enrollment-key";
 
 using var cts = new CancellationTokenSource();
 Console.CancelKeyPress += (_, eventArgs) =>
@@ -22,16 +22,23 @@ Log.Info($"FleetPulse simulator starting against {apiUrl}");
 using var api = new ApiClient(apiUrl);
 
 IReadOnlyList<SimulatedDevice> devices;
+var deviceTokens = new Dictionary<int, string>();
+
 try
 {
-    var token = await api.LoginAsync(DemoUsername, DemoPassword, cts.Token);
-    if (token is null)
-    {
-        Log.Error("Login failed. Check the demo credentials in FleetPulse.Api/appsettings.json.");
-        return 1;
-    }
+    devices = await api.GetDevicesForEnrollmentAsync(enrollmentKey, cts.Token);
 
-    devices = await api.GetDevicesAsync(cts.Token);
+    foreach (var device in devices)
+    {
+        var token = await api.EnrollAsync(device.Id, enrollmentKey, cts.Token);
+        if (token is null)
+        {
+            Log.Error($"Device {device.Id} ({device.Name}) could not be enrolled.");
+            return 1;
+        }
+
+        deviceTokens[device.Id] = token;
+    }
 }
 catch (Exception ex)
 {
@@ -45,42 +52,63 @@ if (devices.Count == 0)
     return 1;
 }
 
-Log.Info($"Simulating {devices.Count} devices every 5 seconds. Press Ctrl+C to stop.");
+Log.Info($"Enrolled {devices.Count} devices. Sending heartbeats every 5 seconds. Press Ctrl+C to stop.");
 
-await using var hub = new HubConnectionBuilder()
-    .WithUrl($"{apiUrl}/hubs/devices", options =>
-        options.AccessTokenProvider = () => Task.FromResult(api.Token))
-    .WithAutomaticReconnect()
-    .Build();
-
-hub.On<DeviceCommand>("ReceiveCommand", command =>
+// Each device has its own token, so each needs its own hub connection.
+var connections = new List<DeviceConnection>();
+foreach (var device in devices)
 {
-    var message = command.Command.ToLowerInvariant() switch
+    var connection = new HubConnectionBuilder()
+        .WithUrl($"{apiUrl}/hubs/devices", options =>
+            options.AccessTokenProvider = () => Task.FromResult<string?>(deviceTokens[device.Id]))
+        .WithAutomaticReconnect()
+        .Build();
+
+    connection.On<DeviceCommand>("ReceiveCommand", async command =>
     {
-        "lock" => "lock command received - device screen locked",
-        "unlock" => "unlock command received - device unlocked",
-        "locate" => "locate command received - reporting current position",
-        _ => $"unknown command '{command.Command}' received"
+        LogCommand(device.Name, command);
+
+        try
+        {
+            await connection.InvokeAsync("AckCommand", command.DeviceId, command.Command);
+            Log.Command($"{device.Name}: acknowledged '{command.Command}' to the server.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"{device.Name}: could not acknowledge '{command.Command}' ({ex.Message}).");
+        }
+    });
+
+    connection.Reconnected += async _ =>
+    {
+        try
+        {
+            await connection.InvokeAsync("RegisterDevice", device.Id);
+            Log.Info($"{device.Name} reconnected to the hub.");
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"{device.Name}: hub re-registration failed ({ex.Message}).");
+        }
     };
 
-    Log.Command($"Device {command.DeviceId}: {message}");
-});
-
-hub.Reconnected += async _ =>
-{
-    Log.Info("Reconnected to the hub, re-registering devices.");
-    await RegisterDevicesAsync(hub, devices, cts.Token);
-};
-
-try
-{
-    await hub.StartAsync(cts.Token);
-    await RegisterDevicesAsync(hub, devices, cts.Token);
+    connections.Add(new DeviceConnection(device, connection));
 }
-catch (Exception ex)
+
+foreach (var entry in connections)
 {
-    Log.Warn($"SignalR connection failed ({ex.Message}). Heartbeats will continue without command handling.");
+    try
+    {
+        await entry.Connection.StartAsync(cts.Token);
+        await entry.Connection.InvokeAsync("RegisterDevice", entry.Device.Id, cts.Token);
+    }
+    catch (Exception ex)
+    {
+        Log.Warn($"{entry.Device.Name}: hub registration failed ({ex.Message}). Heartbeats will continue.");
+    }
 }
+
+Log.Info("Devices registered for lock/locate commands.");
 
 try
 {
@@ -92,7 +120,7 @@ try
             var heartbeat = device.NextHeartbeat();
             try
             {
-                await api.SendHeartbeatAsync(heartbeat, cts.Token);
+                await api.SendHeartbeatAsync(heartbeat, deviceTokens[device.Id], cts.Token);
                 sent++;
             }
             catch (OperationCanceledException) when (cts.IsCancellationRequested)
@@ -116,25 +144,37 @@ catch (OperationCanceledException)
 }
 finally
 {
-    if (hub.State == HubConnectionState.Connected)
+    foreach (var entry in connections)
     {
-        await hub.StopAsync();
+        if (entry.Connection.State == HubConnectionState.Connected)
+        {
+            await entry.Connection.StopAsync();
+        }
     }
 }
 
 Log.Info("Simulator stopped.");
 return 0;
 
-static async Task RegisterDevicesAsync(HubConnection connection, IEnumerable<SimulatedDevice> devices, CancellationToken cancellationToken)
+static void LogCommand(string deviceName, DeviceCommand command)
 {
-    foreach (var device in devices)
+    var message = command.Command.ToLowerInvariant() switch
     {
-        await connection.InvokeAsync("RegisterDevice", device.Id, cancellationToken);
-    }
+        "lock" => "lock command received - device screen locked",
+        "unlock" => "unlock command received - device unlocked",
+        "locate" => "locate command received - reporting current position",
+        "checkout" => $"checkout command received - assigned to {command.WorkerName ?? "a worker"}",
+        "checkin" => $"checkin command received - session for {command.WorkerName ?? "worker"} closed",
+        "end-session" => $"end-session command received - session for {command.WorkerName ?? "worker"} ended by an administrator",
+        _ => $"unknown command '{command.Command}' received"
+    };
 
-    Log.Info("Registered with the hub for lock/locate commands.");
+    Log.Command($"{deviceName} ({command.DeviceId}): {message}");
 }
+
+public record DeviceConnection(SimulatedDevice Device, HubConnection Connection);
 
 public record DeviceCommand(
     [property: JsonPropertyName("deviceId")] int DeviceId,
-    [property: JsonPropertyName("command")] string Command);
+    [property: JsonPropertyName("command")] string Command,
+    [property: JsonPropertyName("workerName")] string? WorkerName = null);

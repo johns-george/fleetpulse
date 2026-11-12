@@ -3,7 +3,7 @@
     <div>
       <h1>Devices</h1>
       <p class="subtitle">
-        {{ devices().length }} device{{ devices().length === 1 ? '' : 's' }} in this view
+        {{ totalCount() }} device{{ totalCount() === 1 ? '' : 's' }} in this view
         @if (lastUpdated()) {
           <span class="dot">•</span> updated {{ lastUpdated() | date: 'HH:mm:ss' }}
         }
@@ -48,6 +48,7 @@
             <th>OS version</th>
             <th>Battery</th>
             <th>Status</th>
+            <th>Checked out to</th>
             <th>Last seen</th>
           </tr>
         </thead>
@@ -75,11 +76,35 @@
                   <span class="status-dot"></span>{{ device.status }}
                 </span>
               </td>
+              <td class="muted">{{ device.currentWorker || '—' }}</td>
               <td class="muted nowrap">{{ device.lastSeen | date: 'MMM d, HH:mm:ss' }}</td>
             </tr>
           }
         </tbody>
       </table>
+
+      <footer class="pager">
+        <span class="muted">
+          Page {{ page() }} of {{ totalPages() }} · {{ totalCount() }} total
+        </span>
+
+        <div class="pager-actions">
+          <button
+            class="btn btn-ghost"
+            type="button"
+            [disabled]="page() <= 1 || loading()"
+            (click)="previousPage()">
+            Previous
+          </button>
+          <button
+            class="btn btn-ghost"
+            type="button"
+            [disabled]="page() >= totalPages() || loading()"
+            (click)="nextPage()">
+            Next
+          </button>
+        </div>
+      </footer>
     </div>
   }
 </section>

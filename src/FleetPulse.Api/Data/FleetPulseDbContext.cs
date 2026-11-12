@@ -11,6 +11,7 @@ public class FleetPulseDbContext : DbContext
 
     public DbSet<Device> Devices => Set<Device>();
     public DbSet<Alert> Alerts => Set<Alert>();
+    public DbSet<DeviceSession> DeviceSessions => Set<DeviceSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -29,6 +30,17 @@ public class FleetPulseDbContext : DbContext
         modelBuilder.Entity<Alert>(entity =>
         {
             entity.Property(a => a.Message).IsRequired().HasMaxLength(250);
+        });
+
+        modelBuilder.Entity<DeviceSession>(entity =>
+        {
+            entity.Property(s => s.WorkerName).IsRequired().HasMaxLength(100);
+            entity.Property(s => s.EndedBy).HasMaxLength(100);
+            entity.HasIndex(s => s.DeviceId);
+            entity.HasOne(s => s.Device)
+                .WithMany()
+                .HasForeignKey(s => s.DeviceId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

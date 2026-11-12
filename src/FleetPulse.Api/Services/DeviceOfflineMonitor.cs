@@ -1,11 +1,7 @@
-using FleetPulse.Api.Data;
-using FleetPulse.Api.Entities;
-using Microsoft.EntityFrameworkCore;
-
 namespace FleetPulse.Api.Services;
 
 /// <summary>
-/// Marks devices Offline when no heartbeat has arrived within the configured window.
+/// Periodically asks the sweeper to mark silent devices Offline.
 /// </summary>
 public class DeviceOfflineMonitor : BackgroundService
 {
@@ -36,7 +32,9 @@ public class DeviceOfflineMonitor : BackgroundService
         {
             try
             {
-                await SweepAsync(offlineAfter, stoppingToken);
+                using var scope = _scopeFactory.CreateScope();
+                var sweeper = scope.ServiceProvider.GetRequiredService<IDeviceOfflineSweeper>();
+                await sweeper.SweepAsync(offlineAfter, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -46,46 +44,6 @@ public class DeviceOfflineMonitor : BackgroundService
             {
                 _logger.LogError(ex, "Failed to sweep stale devices");
             }
-        }
-    }
-
-    private async Task SweepAsync(TimeSpan offlineAfter, CancellationToken cancellationToken)
-    {
-        using var scope = _scopeFactory.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<FleetPulseDbContext>();
-        var notifier = scope.ServiceProvider.GetRequiredService<IDeviceNotifier>();
-
-        var cutoff = DateTime.UtcNow - offlineAfter;
-        var staleDevices = await db.Devices
-            .Where(d => d.Status == DeviceStatus.Online && d.LastSeen < cutoff)
-            .ToListAsync(cancellationToken);
-
-        if (staleDevices.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var device in staleDevices)
-        {
-            device.Status = DeviceStatus.Offline;
-        }
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        foreach (var device in staleDevices)
-        {
-            _logger.LogInformation("Device {DeviceName} marked offline", device.Name);
-            await notifier.DeviceUpdatedAsync(new DTOs.DeviceDto(
-                device.Id,
-                device.Name,
-                device.Platform.ToString(),
-                device.OsVersion,
-                device.BatteryLevel,
-                device.Latitude,
-                device.Longitude,
-                device.IsLocked,
-                device.LastSeen,
-                device.Status.ToString()));
         }
     }
 }

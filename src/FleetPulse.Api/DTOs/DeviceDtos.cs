@@ -12,9 +12,12 @@ public record DeviceDto(
     double Longitude,
     bool IsLocked,
     DateTime LastSeen,
-    string Status);
+    string Status,
+    string? CurrentWorker = null);
 
 public record AlertDto(int Id, int DeviceId, string Message, DateTime CreatedAt);
+
+public record PagedResultDto<T>(IReadOnlyList<T> Items, int Page, int PageSize, int TotalCount);
 
 public record DeviceDetailDto(
     int Id,
@@ -27,7 +30,8 @@ public record DeviceDetailDto(
     bool IsLocked,
     DateTime LastSeen,
     string Status,
-    IReadOnlyList<AlertDto> Alerts);
+    IReadOnlyList<AlertDto> Alerts,
+    string? CurrentWorker = null);
 
 public class HeartbeatRequest
 {
@@ -54,3 +58,20 @@ public record DashboardSummaryDto(
     IReadOnlyList<PlatformCountDto> Platforms);
 
 public record LocateResponse(string Message);
+
+public record CommandAcknowledgementDto(int DeviceId, string Command, DateTime AcknowledgedAt);
+
+public record DeviceSessionDto(
+    int Id,
+    int DeviceId,
+    string WorkerName,
+    DateTime StartedAt,
+    DateTime? EndedAt,
+    string? EndedBy);
+
+public class CheckoutRequest
+{
+    [Required]
+    [StringLength(100)]
+    public string WorkerName { get; set; } = string.Empty;
+}

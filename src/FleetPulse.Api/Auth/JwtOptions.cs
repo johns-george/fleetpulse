@@ -8,6 +8,7 @@ public class JwtOptions
     public string Issuer { get; set; } = "FleetPulse.Api";
     public string Audience { get; set; } = "FleetPulse.Web";
     public int ExpiryMinutes { get; set; } = 480;
+    public int DeviceTokenExpiryDays { get; set; } = 30;
 }
 
 public class AdminOptions

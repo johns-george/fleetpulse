@@ -3,7 +3,7 @@ import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signal
 import { Subject } from 'rxjs';
 import { API_BASE_URL } from './api.config';
 import { AuthService } from './auth.service';
-import { Alert, Device } from './models';
+import { Alert, CommandAcknowledgement, Device } from './models';
 
 export type RealtimeState = 'disconnected' | 'connecting' | 'connected';
 
@@ -23,6 +23,7 @@ export class RealtimeService {
   readonly state = signal<RealtimeState>('disconnected');
   readonly deviceUpdated$ = new Subject<Device>();
   readonly alertCreated$ = new Subject<Alert>();
+  readonly commandAcknowledged$ = new Subject<CommandAcknowledgement>();
 
   async connect(): Promise<void> {
     if (this.hub || !this.auth.getToken()) {
@@ -39,6 +40,9 @@ export class RealtimeService {
 
     hub.on('DeviceUpdated', (device: Device) => this.deviceUpdated$.next(device));
     hub.on('AlertCreated', (alert: Alert) => this.alertCreated$.next(alert));
+    hub.on('CommandAcknowledged', (ack: CommandAcknowledgement) =>
+      this.commandAcknowledged$.next(ack)
+    );
     hub.onreconnecting(() => this.state.set('connecting'));
     hub.onreconnected(() => this.state.set('connected'));
     hub.onclose(() => {

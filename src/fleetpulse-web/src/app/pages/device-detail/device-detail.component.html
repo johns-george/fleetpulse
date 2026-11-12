@@ -90,6 +90,69 @@
         </section>
 
         <section class="card panel">
+          <h2>Shared device session</h2>
+
+          @if (device.currentWorker) {
+            <p class="session-worker">Checked out to <strong>{{ device.currentWorker }}</strong></p>
+
+            <div class="session-actions">
+              <button
+                class="btn btn-primary"
+                type="button"
+                [disabled]="sessionPending()"
+                (click)="checkin()">
+                Check in
+              </button>
+              <button
+                class="btn btn-ghost"
+                type="button"
+                [disabled]="sessionPending()"
+                (click)="forceEnd()">
+                Force end session
+              </button>
+            </div>
+          } @else {
+            <form class="checkout-form" (ngSubmit)="checkout()">
+              <label class="field">
+                <span>Worker name</span>
+                <input
+                  class="input"
+                  type="text"
+                  maxlength="100"
+                  placeholder="e.g. Priya S."
+                  [formControl]="workerName" />
+              </label>
+              <button class="btn btn-primary" type="submit" [disabled]="sessionPending()">
+                Check out
+              </button>
+            </form>
+          }
+
+          <h3>Recent sessions</h3>
+
+          @if (sessions().length === 0) {
+            <p class="empty">No sessions recorded yet.</p>
+          } @else {
+            <ul class="session-list">
+              @for (session of sessions(); track session.id) {
+                <li>
+                  <div>
+                    <span class="session-name">{{ session.workerName }}</span>
+                    <span class="session-times">
+                      {{ session.startedAt | date: 'MMM d, HH:mm' }} →
+                      {{ session.endedAt ? (session.endedAt | date: 'MMM d, HH:mm') : 'active' }}
+                    </span>
+                  </div>
+                  <span class="session-state" [class.active]="!session.endedAt">
+                    {{ endedLabel(session) }}
+                  </span>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+
+        <section class="card panel">
           <h2>Recent alerts</h2>
 
           @if (device.alerts.length === 0) {

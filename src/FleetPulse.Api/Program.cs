@@ -17,15 +17,36 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
 builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
+builder.Services.Configure<EnrollmentOptions>(builder.Configuration.GetSection(EnrollmentOptions.SectionName));
+
+// --- Database: SQLite by default, SQL Server when configured ---
+var databaseProvider = builder.Configuration["Database:Provider"] ?? "Sqlite";
+var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=fleetpulse.db";
 
 // --- Services ---
 builder.Services.AddDbContext<FleetPulseDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("Default") ?? "Data Source=fleetpulse.db"));
+{
+    switch (databaseProvider.ToLowerInvariant())
+    {
+        case "sqlite":
+            options.UseSqlite(connectionString);
+            break;
+        case "sqlserver":
+            options.UseSqlServer(connectionString);
+            break;
+        default:
+            throw new InvalidOperationException(
+                $"Unsupported Database:Provider '{databaseProvider}'. Use 'Sqlite' or 'SqlServer'.");
+    }
+});
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IDeviceService, DeviceService>();
+builder.Services.AddScoped<IDeviceSessionService, DeviceSessionService>();
+builder.Services.AddScoped<IDeviceOfflineSweeper, DeviceOfflineSweeper>();
 builder.Services.AddScoped<IDeviceNotifier, DeviceNotifier>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHostedService<DeviceOfflineMonitor>();
 
@@ -85,7 +106,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// --- Create and seed the SQLite database on first run ---
+// --- Create and seed the database on first run (works for both providers) ---
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FleetPulseDbContext>();
@@ -113,3 +134,7 @@ app.MapControllers();
 app.MapHub<DeviceHub>("/hubs/devices");
 
 app.Run();
+
+/// <summary>Exposed for WebApplicationFactory-based integration tests.</summary>
+public partial class Program;
+

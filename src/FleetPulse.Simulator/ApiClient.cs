@@ -1,13 +1,17 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 
 namespace FleetPulse.Simulator;
 
 /// <summary>
-/// Minimal typed HTTP client for the FleetPulse API.
+/// Minimal typed HTTP client for the FleetPulse API. Devices enroll with the
+/// shared enrollment key and then authenticate with their own device token.
 /// </summary>
 public sealed class ApiClient : IDisposable
 {
+    public const string EnrollmentKeyHeader = "X-Enrollment-Key";
+
     private readonly HttpClient _http;
 
     public ApiClient(string baseUrl)
@@ -15,13 +19,37 @@ public sealed class ApiClient : IDisposable
         _http = new HttpClient { BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/") };
     }
 
-    public string? Token { get; private set; }
+    public async Task<IReadOnlyList<SimulatedDevice>> GetDevicesForEnrollmentAsync(
+        string enrollmentKey,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "api/enrollment/devices");
+        request.Headers.Add(EnrollmentKeyHeader, enrollmentKey);
 
-    public async Task<string?> LoginAsync(string username, string password, CancellationToken cancellationToken)
+        using var response = await _http.SendAsync(request, cancellationToken);
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            throw new InvalidOperationException(
+                "The API rejected the enrollment key. Check FLEETPULSE_ENROLLMENT_KEY and Enrollment:Key.");
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        var devices = await response.Content.ReadFromJsonAsync<List<EnrollmentDevice>>(
+                          cancellationToken: cancellationToken)
+                      ?? new List<EnrollmentDevice>();
+
+        return devices
+            .Select(d => new SimulatedDevice(d.Id, d.Name, d.BatteryLevel, d.Latitude, d.Longitude))
+            .ToList();
+    }
+
+    public async Task<string?> EnrollAsync(int deviceId, string enrollmentKey, CancellationToken cancellationToken)
     {
         using var response = await _http.PostAsJsonAsync(
-            "api/auth/login",
-            new { username, password },
+            "api/enrollment",
+            new { deviceId, enrollmentKey },
             cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -29,36 +57,35 @@ public sealed class ApiClient : IDisposable
             return null;
         }
 
-        var login = await response.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: cancellationToken);
-        Token = login?.Token;
+        var enrollment = await response.Content.ReadFromJsonAsync<EnrollmentResponse>(
+            cancellationToken: cancellationToken);
 
-        if (Token is not null)
+        return enrollment?.Token;
+    }
+
+    public async Task SendHeartbeatAsync(
+        HeartbeatPayload payload,
+        string deviceToken,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "api/devices/heartbeat")
         {
-            _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Token);
-        }
+            Content = JsonContent.Create(payload)
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", deviceToken);
 
-        return Token;
-    }
-
-    public async Task<IReadOnlyList<SimulatedDevice>> GetDevicesAsync(CancellationToken cancellationToken)
-    {
-        var devices = await _http.GetFromJsonAsync<List<DeviceDto>>("api/devices", cancellationToken)
-                      ?? new List<DeviceDto>();
-
-        return devices
-            .Select(d => new SimulatedDevice(d.Id, d.Name, d.BatteryLevel, d.Latitude, d.Longitude))
-            .ToList();
-    }
-
-    public async Task SendHeartbeatAsync(HeartbeatPayload payload, CancellationToken cancellationToken)
-    {
-        using var response = await _http.PostAsJsonAsync("api/devices/heartbeat", payload, cancellationToken);
+        using var response = await _http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 
     public void Dispose() => _http.Dispose();
 
-    private sealed record LoginResponse(string Token);
+    private sealed record EnrollmentResponse(string Token);
 
-    private sealed record DeviceDto(int Id, string Name, int BatteryLevel, double Latitude, double Longitude);
+    private sealed record EnrollmentDevice(
+        int Id,
+        string Name,
+        int BatteryLevel,
+        double Latitude,
+        double Longitude);
 }

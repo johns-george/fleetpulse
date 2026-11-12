@@ -11,7 +11,8 @@ public interface IDeviceNotifier
 {
     Task DeviceUpdatedAsync(DeviceDto device);
     Task AlertCreatedAsync(AlertDto alert);
-    Task SendCommandAsync(int deviceId, string command);
+    Task SendCommandAsync(int deviceId, string command, string? workerName = null);
+    Task CommandAcknowledgedAsync(CommandAcknowledgementDto acknowledgement);
 }
 
 public class DeviceNotifier : IDeviceNotifier
@@ -24,14 +25,18 @@ public class DeviceNotifier : IDeviceNotifier
     }
 
     public Task DeviceUpdatedAsync(DeviceDto device) =>
-        _hub.Clients.All.SendAsync("DeviceUpdated", device);
+        _hub.Clients.Group(DeviceHub.DashboardGroup).SendAsync("DeviceUpdated", device);
 
     public Task AlertCreatedAsync(AlertDto alert) =>
-        _hub.Clients.All.SendAsync("AlertCreated", alert);
+        _hub.Clients.Group(DeviceHub.DashboardGroup).SendAsync("AlertCreated", alert);
 
-    public Task SendCommandAsync(int deviceId, string command) =>
+    public Task SendCommandAsync(int deviceId, string command, string? workerName = null) =>
         _hub.Clients.Group(DeviceHub.GroupFor(deviceId))
-            .SendAsync("ReceiveCommand", new DeviceCommand(deviceId, command));
+            .SendAsync("ReceiveCommand", new DeviceCommand(deviceId, command, workerName));
+
+    public Task CommandAcknowledgedAsync(CommandAcknowledgementDto acknowledgement) =>
+        _hub.Clients.Group(DeviceHub.DashboardGroup)
+            .SendAsync("CommandAcknowledged", acknowledgement);
 }
 
-public record DeviceCommand(int DeviceId, string Command);
+public record DeviceCommand(int DeviceId, string Command, string? WorkerName = null);

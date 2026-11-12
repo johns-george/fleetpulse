@@ -157,6 +157,93 @@ dd {
   color: var(--muted);
 }
 
+.session-worker {
+  margin: 0 0 12px;
+  font-size: 14px;
+}
+
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.checkout-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.field .input {
+  min-width: 190px;
+}
+
+h3 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.session-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef2f7;
+  font-size: 13px;
+}
+
+.session-list li:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.session-name {
+  display: block;
+  font-weight: 600;
+}
+
+.session-times {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.session-state {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.session-state.active {
+  color: #15803d;
+}
+
 .map-panel header {
   margin-bottom: 12px;
 }

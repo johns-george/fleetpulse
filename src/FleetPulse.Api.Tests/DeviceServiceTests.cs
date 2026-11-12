@@ -138,6 +138,39 @@ public class DeviceServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Device_list_is_paginated_and_stably_ordered()
+    {
+        for (var i = 1; i <= 5; i++)
+        {
+            await SeedDeviceAsync(80, name: $"Device {i}");
+        }
+
+        var service = CreateService();
+
+        var firstPage = await service.GetDevicesAsync(null, null, page: 1, pageSize: 2);
+        Assert.Equal(5, firstPage.TotalCount);
+        Assert.Equal(2, firstPage.PageSize);
+        Assert.Equal(new[] { "Device 1", "Device 2" }, firstPage.Items.Select(d => d.Name));
+
+        var lastPage = await service.GetDevicesAsync(null, null, page: 3, pageSize: 2);
+        Assert.Single(lastPage.Items);
+        Assert.Equal("Device 5", lastPage.Items[0].Name);
+    }
+
+    [Fact]
+    public async Task Page_number_and_size_are_clamped()
+    {
+        await SeedDeviceAsync(80);
+        var service = CreateService();
+
+        var result = await service.GetDevicesAsync(null, null, page: -4, pageSize: 500);
+
+        Assert.Equal(1, result.Page);
+        Assert.Equal(100, result.PageSize);
+        Assert.Single(result.Items);
+    }
+
+    [Fact]
     public async Task Lock_sets_the_flag_and_sends_a_command_to_the_device()
     {
         var device = await SeedDeviceAsync(batteryLevel: 80);
@@ -202,11 +235,12 @@ public class DeviceServiceTests : IDisposable
     private async Task<Device> SeedDeviceAsync(
         int batteryLevel,
         DeviceStatus status = DeviceStatus.Online,
-        Platform platform = Platform.Android)
+        Platform platform = Platform.Android,
+        string name = "Test device")
     {
         var device = new Device
         {
-            Name = "Test device",
+            Name = name,
             Platform = platform,
             OsVersion = "Test OS",
             BatteryLevel = batteryLevel,
@@ -221,37 +255,4 @@ public class DeviceServiceTests : IDisposable
         return device;
     }
 
-    private sealed class ManualTimeProvider : TimeProvider
-    {
-        private DateTimeOffset _now;
-
-        public ManualTimeProvider(DateTimeOffset now) => _now = now;
-
-        public override DateTimeOffset GetUtcNow() => _now;
-    }
-
-    private sealed class RecordingNotifier : IDeviceNotifier
-    {
-        public List<DeviceDto> DeviceUpdates { get; } = new();
-        public List<AlertDto> Alerts { get; } = new();
-        public List<DeviceCommand> Commands { get; } = new();
-
-        public Task DeviceUpdatedAsync(DeviceDto device)
-        {
-            DeviceUpdates.Add(device);
-            return Task.CompletedTask;
-        }
-
-        public Task AlertCreatedAsync(AlertDto alert)
-        {
-            Alerts.Add(alert);
-            return Task.CompletedTask;
-        }
-
-        public Task SendCommandAsync(int deviceId, string command)
-        {
-            Commands.Add(new DeviceCommand(deviceId, command));
-            return Task.CompletedTask;
-        }
-    }
 }

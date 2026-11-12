@@ -12,6 +12,14 @@ export interface Device {
   isLocked: boolean;
   lastSeen: string;
   status: DeviceStatus;
+  currentWorker?: string | null;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
 }
 
 export interface Alert {
@@ -23,6 +31,21 @@ export interface Alert {
 
 export interface DeviceDetail extends Device {
   alerts: Alert[];
+}
+
+export interface CommandAcknowledgement {
+  deviceId: number;
+  command: string;
+  acknowledgedAt: string;
+}
+
+export interface DeviceSession {
+  id: number;
+  deviceId: number;
+  workerName: string;
+  startedAt: string;
+  endedAt: string | null;
+  endedBy: string | null;
 }
 
 export interface PlatformCount {
