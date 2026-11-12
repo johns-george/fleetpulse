@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.db
+*.db-shm
+*.db-wal
+.dotnet/
+.dotnet-install.sh
+.dotnet-install.log
+
+# Angular / Node
+node_modules/
+dist/
+.angular/
+.npm-cache/
+npm-debug.log*
+
+# Logs
+*.log
+
+# Tooling
+.vscode/
+.idea/
+.DS_Store

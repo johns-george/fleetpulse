@@ -1,0 +1,128 @@
+<section class="page">
+  <a class="back" routerLink="/devices">← All devices</a>
+
+  @if (loading()) {
+    <div class="state card"><span class="spinner"></span> Loading device…</div>
+  } @else if (notFound()) {
+    <div class="state card">
+      <div>That device does not exist.</div>
+      <a class="btn btn-ghost" routerLink="/devices">Back to devices</a>
+    </div>
+  } @else if (error()) {
+    <div class="state card error">
+      <div>{{ error() }}</div>
+      <button class="btn btn-ghost" type="button" (click)="load()">Retry</button>
+    </div>
+  } @else {
+    @if (device(); as device) {
+    <header class="detail-header">
+      <div>
+        <h1>{{ device.name }}</h1>
+        <p class="subtitle">
+          {{ device.platform }} · {{ device.osVersion }} · #{{ device.id }}
+        </p>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-ghost" type="button" [disabled]="locatePending()" (click)="locate()">
+          @if (locatePending()) {
+            <span class="spinner"></span> Locating…
+          } @else {
+            Locate
+          }
+        </button>
+
+        <button
+          class="btn btn-primary"
+          type="button"
+          [disabled]="lockPending() || device.isLocked"
+          (click)="lock()">
+          @if (lockPending()) {
+            <span class="spinner small"></span> Sending…
+          } @else if (device.isLocked) {
+            Device locked
+          } @else {
+            Lock device
+          }
+        </button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <div class="column">
+        <section class="card panel">
+          <h2>Device information</h2>
+
+          <dl class="facts">
+            <div>
+              <dt>Status</dt>
+              <dd>
+                <span class="status" [class.online]="device.status === 'Online'">
+                  <span class="status-dot"></span>{{ device.status }}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Battery</dt>
+              <dd><app-battery-indicator [level]="device.batteryLevel" /></dd>
+            </div>
+            <div>
+              <dt>Platform</dt>
+              <dd>{{ device.platform }}</dd>
+            </div>
+            <div>
+              <dt>OS version</dt>
+              <dd>{{ device.osVersion }}</dd>
+            </div>
+            <div>
+              <dt>Last seen</dt>
+              <dd>{{ device.lastSeen | date: 'MMM d, y, HH:mm:ss' }}</dd>
+            </div>
+            <div>
+              <dt>Coordinates</dt>
+              <dd>{{ device.latitude | number: '1.4-4' }}, {{ device.longitude | number: '1.4-4' }}</dd>
+            </div>
+            <div>
+              <dt>Lock state</dt>
+              <dd>{{ device.isLocked ? 'Locked remotely' : 'Unlocked' }}</dd>
+            </div>
+          </dl>
+        </section>
+
+        <section class="card panel">
+          <h2>Recent alerts</h2>
+
+          @if (device.alerts.length === 0) {
+            <p class="empty">No alerts for this device yet.</p>
+          } @else {
+            <ul class="alert-list">
+              @for (alert of device.alerts; track alert.id) {
+                <li>
+                  <span class="alert-dot"></span>
+                  <div>
+                    <p>{{ alert.message }}</p>
+                    <time>{{ alert.createdAt | date: 'MMM d, HH:mm:ss' }}</time>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      </div>
+
+      <aside class="column">
+        <section class="card panel map-panel">
+          <header>
+            <h2>Location</h2>
+            <p>Last reported position</p>
+          </header>
+          <app-device-map
+            [latitude]="device.latitude"
+            [longitude]="device.longitude"
+            [label]="device.name" />
+        </section>
+      </aside>
+    </div>
+    }
+  }
+</section>

@@ -1,0 +1,28 @@
+<div class="app-shell">
+  @if (auth.isAuthenticated()) {
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" routerLink="/dashboard">
+          <span class="brand-mark">FP</span>
+          <span class="brand-text">FleetPulse<small>Device management</small></span>
+        </a>
+
+        <nav class="nav">
+          <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
+          <a routerLink="/devices" routerLinkActive="active">Devices</a>
+        </nav>
+
+        <div class="user">
+          <span class="user-name">{{ auth.username() }}</span>
+          <button class="btn btn-ghost" type="button" (click)="signOut()">Sign out</button>
+        </div>
+      </div>
+    </header>
+  }
+
+  <main class="app-main">
+    <router-outlet />
+  </main>
+
+  <app-toast />
+</div>

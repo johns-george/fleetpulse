@@ -1,0 +1,43 @@
+<div class="login-screen">
+  <div class="login-card card">
+    <div class="brand">
+      <span class="brand-mark">FP</span>
+      <div>
+        <h1>FleetPulse</h1>
+        <p class="muted">Mobile device management</p>
+      </div>
+    </div>
+
+    <p class="intro">Sign in to monitor your fleet, battery health and device status.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label class="field">
+        <span>Username</span>
+        <input type="text" formControlName="username" autocomplete="username" placeholder="admin" />
+      </label>
+
+      <label class="field">
+        <span>Password</span>
+        <input
+          type="password"
+          formControlName="password"
+          autocomplete="current-password"
+          placeholder="Your password" />
+      </label>
+
+      @if (error()) {
+        <p class="alert" role="alert">{{ error() }}</p>
+      }
+
+      <button class="btn btn-primary submit" type="submit" [disabled]="submitting()">
+        @if (submitting()) {
+          <span class="spinner small"></span> Signing in…
+        } @else {
+          Sign in
+        }
+      </button>
+    </form>
+
+    <p class="demo-hint">Demo login <strong>admin</strong> / <strong>Admin&#64;123</strong></p>
+  </div>
+</div>

@@ -1,0 +1,91 @@
+<section class="page">
+  <header class="page-header">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="subtitle">
+        Fleet health at a glance
+        @if (lastUpdated()) {
+          <span class="dot">•</span> updated {{ lastUpdated() | date: 'HH:mm:ss' }}
+        }
+      </p>
+    </div>
+
+    <span class="live" [class.connected]="connectionState() === 'connected'">
+      <span class="live-dot"></span>
+      @switch (connectionState()) {
+        @case ('connected') { Live }
+        @case ('connecting') { Connecting… }
+        @default { Offline }
+      }
+    </span>
+  </header>
+
+  @if (loading() && !summary()) {
+    <div class="state card"><span class="spinner"></span> Loading dashboard…</div>
+  } @else if (error() && !summary()) {
+    <div class="state card error">
+      <div>{{ error() }}</div>
+      <button class="btn btn-ghost" type="button" (click)="loadSummary()">Retry</button>
+    </div>
+  } @else {
+    <div class="stats">
+      <article class="stat card">
+        <span class="stat-label">Total devices</span>
+        <span class="stat-value">{{ summary()?.total ?? 0 }}</span>
+        <span class="stat-note">Managed in this fleet</span>
+      </article>
+
+      <article class="stat card online">
+        <span class="stat-label">Online</span>
+        <span class="stat-value">{{ summary()?.online ?? 0 }}</span>
+        <span class="stat-note">Heartbeat in last 30s</span>
+      </article>
+
+      <article class="stat card offline">
+        <span class="stat-label">Offline</span>
+        <span class="stat-value">{{ summary()?.offline ?? 0 }}</span>
+        <span class="stat-note">No recent heartbeat</span>
+      </article>
+
+      <article class="stat card low">
+        <span class="stat-label">Low battery</span>
+        <span class="stat-value">{{ summary()?.lowBattery ?? 0 }}</span>
+        <span class="stat-note">Below 15% charge</span>
+      </article>
+    </div>
+
+    <div class="charts">
+      <section class="card chart-card">
+        <header>
+          <h2>Availability</h2>
+          <p>Online versus offline devices</p>
+        </header>
+        <div class="chart-body">
+          <canvas
+            baseChart
+            type="doughnut"
+            [data]="doughnutData()"
+            [options]="doughnutOptions"></canvas>
+        </div>
+      </section>
+
+      <section class="card chart-card">
+        <header>
+          <h2>Platforms</h2>
+          <p>Devices by operating system</p>
+        </header>
+        <div class="chart-body">
+          <canvas
+            baseChart
+            type="bar"
+            [data]="barData()"
+            [options]="barOptions"></canvas>
+        </div>
+      </section>
+    </div>
+
+    @if (error()) {
+      <p class="stale-note">{{ error() }} Showing the last known numbers.</p>
+    }
+  }
+</section>
