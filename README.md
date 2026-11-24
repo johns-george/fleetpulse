@@ -14,6 +14,29 @@ Built as a portfolio project — deliberately small, runnable with three command
 
 FleetPulse tracks 10 sample devices (Android, iOS, Windows). A console simulator enrolls each device, sends heartbeats every 5 seconds with a draining battery and drifting GPS coordinates, and listens for commands over SignalR. The API stores the state, raises low-battery alerts, marks silent devices offline, tracks shared-device sessions, and pushes every change to the Angular dashboard.
 
+## Live demo
+
+- **App:** <https://your-netlify-site.netlify.app> _(placeholder — update after deploying)_
+- **API:** <https://fleetpulse-api.onrender.com> _(placeholder)_
+- **Health check:** `/health`
+
+The API runs on Render's free tier, so **the first load can take about a minute** while the instance wakes from sleep. Demo mode generates heartbeats inside the API (no simulator process needed), and the SQLite file lives in the container's `/tmp`, so **data resets whenever the instance restarts**.
+
+### Deployment
+
+The API ships as a Docker image (`Dockerfile` at the repo root); point Render at the repository with the Docker runtime, health check path `/health`, and these environment variables:
+
+| Variable | Value |
+| --- | --- |
+| `ASPNETCORE_ENVIRONMENT` | `Production` |
+| `Demo__Enabled` | `true` |
+| `ConnectionStrings__Default` | `Data Source=/tmp/fleetpulse.db` |
+| `Jwt__Key` | `<random 32+ character string>` |
+| `Enrollment__Key` | `<random string>` |
+| `Cors__AllowedOrigins__0` | `https://<your-netlify-site>.netlify.app` |
+
+On Netlify, set the base directory to `src/fleetpulse-web` (it picks up `netlify.toml` for the build, publish directory and SPA redirect), and keep `apiBaseUrl` in `src/environments/environment.prod.ts` in sync with the Render URL before deploying.
+
 ## Features
 
 - **JWT authentication with roles** — a demo admin signs into the Angular app (route guard + HTTP interceptor); each device gets its own long-lived token from enrollment
@@ -246,6 +269,7 @@ The hub requires authentication. Admin connections join the `dashboard` group an
 - **Shared sessions** — a device has at most one active session (`EndedAt` null). Check-out records who took it and when; check-in closes it as `worker`; force-end closes it as `admin:<username>` and sends `end-session` to the device. `currentWorker` is included in every device DTO.
 - **Live dashboard** — hub events are throttled to one summary refetch per 1.2s, so ten devices heartbeating every 5s don't hammer the API. The "Live" badge reflects the actual hub connection state, and the client retries every 5s if the API restarts.
 - **Simulator** — each device drains 0.2–0.8% per tick and drifts its coordinates slightly. A device that reaches 1% "recharges" to 100% so long demos keep producing data.
+- **Demo mode** — when `Demo:Enabled=true`, `DemoSimulatorService` heartbeats every device directly through `IDeviceService` every 5s, and `IDeviceNotifier` is wrapped so commands are acknowledged about a second later. That keeps a hosted instance alive-looking without running the console simulator.
 
 ## Configuration
 
@@ -262,6 +286,7 @@ The hub requires authentication. Admin connections join the `dashboard` group an
 | `Cors:AllowedOrigins` | `http://localhost:4200` | Angular dev server |
 | `Monitoring:OfflineThresholdSeconds` | `30` | Silence before a device is offline |
 | `Monitoring:ScanIntervalSeconds` | `5` | Offline sweep frequency |
+| `Demo:Enabled` | `false` | Simulate heartbeats in-process and auto-acknowledge commands (hosted demo) |
 
 ## Known limitations
 

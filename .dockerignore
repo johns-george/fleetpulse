@@ -1,0 +1,29 @@
+# Build outputs
+**/bin
+**/obj
+**/dist
+**/node_modules
+
+# Local databases
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Tooling, logs and editor files
+.git
+.gitignore
+.dotnet
+.npm-cache
+.angular
+**/*.log
+.vscode
+.idea
+.DS_Store
+
+# Not needed to build the API image
+docs
+src/fleetpulse-web
+src/FleetPulse.Simulator
+src/FleetPulse.Api.Tests
+docker-compose.yml
+README.md

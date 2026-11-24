@@ -19,6 +19,8 @@ builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptio
 builder.Services.Configure<AdminOptions>(builder.Configuration.GetSection(AdminOptions.SectionName));
 builder.Services.Configure<EnrollmentOptions>(builder.Configuration.GetSection(EnrollmentOptions.SectionName));
 
+var demoEnabled = builder.Configuration.GetValue("Demo:Enabled", false);
+
 // --- Database: SQLite by default, SQL Server when configured ---
 var databaseProvider = builder.Configuration["Database:Provider"] ?? "Sqlite";
 var connectionString = builder.Configuration.GetConnectionString("Default") ?? "Data Source=fleetpulse.db";
@@ -44,11 +46,27 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IDeviceSessionService, DeviceSessionService>();
 builder.Services.AddScoped<IDeviceOfflineSweeper, DeviceOfflineSweeper>();
-builder.Services.AddScoped<IDeviceNotifier, DeviceNotifier>();
+builder.Services.AddScoped<DeviceNotifier>();
+builder.Services.AddScoped<IDeviceNotifier>(sp =>
+{
+    var inner = sp.GetRequiredService<DeviceNotifier>();
+
+    return demoEnabled
+        ? new DemoDeviceNotifier(
+            inner,
+            sp.GetRequiredService<TimeProvider>(),
+            sp.GetRequiredService<ILogger<DemoDeviceNotifier>>())
+        : inner;
+});
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddHostedService<DeviceOfflineMonitor>();
+
+if (demoEnabled)
+{
+    builder.Services.AddHostedService<DemoSimulatorService>();
+}
 
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
@@ -129,6 +147,9 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
 app.UseCors("AngularDev");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Anonymous liveness probe for hosting platforms (Render, Docker health checks).
+app.MapGet("/health", () => Results.Text("ok"));
 
 app.MapControllers();
 app.MapHub<DeviceHub>("/hubs/devices");
