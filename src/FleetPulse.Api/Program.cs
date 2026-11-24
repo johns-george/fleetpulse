@@ -151,6 +151,10 @@ app.UseCors("AngularDev");
 // e.g. "https://*.netlify.app" covers Netlify deploy previews whose hostnames change per build.
 static bool MatchesOrigin(string origin, string allowed)
 {
+    // Browsers send Origin without a trailing slash; tolerate one in configuration.
+    origin = origin.TrimEnd('/');
+    allowed = allowed.TrimEnd('/');
+
     if (string.Equals(origin, allowed, StringComparison.OrdinalIgnoreCase))
     {
         return true;

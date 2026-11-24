@@ -313,7 +313,7 @@ This is a demo, not a production MDM. The important shortcuts:
 
 - **`dotnet: command not found`** — install the .NET 8 SDK, or run the commands with the explicit path to your SDK (e.g. `./.dotnet/dotnet run`).
 - **Login says the API is unreachable** — start the API on port 5080, or change `API_BASE_URL` in `src/fleetpulse-web/src/app/core/api.config.ts`.
-- **CORS errors** — the Angular dev server must run on `http://localhost:4200`, or add your origin to `Cors:AllowedOrigins`. Exact origins are required (no trailing slash); use a `*` entry such as `https://*.netlify.app` when a host changes per deploy, and note that edits to `appsettings.json` only take effect after the API is redeployed.
+- **CORS errors** — the Angular dev server must run on `http://localhost:4200`, or add your origin to `Cors:AllowedOrigins`. Origins are compared case-insensitively with any trailing slash ignored, but paths are not: use just scheme + host; use a `*` entry such as `https://*.netlify.app` when a host changes per deploy, and note that edits to `appsettings.json` only take effect after the API is redeployed.
 - **`npm install` fails with `EACCES` on `~/.npm/_cacache`** — your npm cache has files npm can't rewrite. Use a project-local cache: `npm install --cache .npm-cache`.
 - **The simulator logs an enrollment-key error** — `FLEETPULSE_ENROLLMENT_KEY` must match `Enrollment:Key` in `appsettings.json`.
 - **An existing database is missing a table** (for example after a schema change) — `EnsureCreated` does not migrate. Delete `src/FleetPulse.Api/fleetpulse.db*` and restart the API, or drop and recreate the SQL Server database.
