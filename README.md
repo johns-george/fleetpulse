@@ -17,7 +17,7 @@ FleetPulse tracks 10 sample devices (Android, iOS, Windows). A console simulator
 ## Live demo
 
 - **App:** <https://your-netlify-site.netlify.app> _(placeholder — update after deploying)_
-- **API:** <https://fleetpulse-api.onrender.com> _(placeholder)_
+- **API:** <https://fleetpulse-api-e31c.onrender.com>
 - **Health check:** `/health`
 
 The API runs on Render's free tier, so **the first load can take about a minute** while the instance wakes from sleep. Demo mode generates heartbeats inside the API (no simulator process needed), and the SQLite file lives in the container's `/tmp`, so **data resets whenever the instance restarts**.
