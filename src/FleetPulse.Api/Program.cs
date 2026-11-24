@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using FleetPulse.Api.Auth;
 using FleetPulse.Api.Data;
 using FleetPulse.Api.Hubs;
@@ -82,7 +83,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularDev", policy =>
-        policy.WithOrigins(allowedOrigins)
+        policy.SetIsOriginAllowed(origin => allowedOrigins.Any(allowed => MatchesOrigin(origin, allowed)))
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -145,6 +146,24 @@ app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
 }));
 
 app.UseCors("AngularDev");
+
+// Exact origins are compared case-insensitively; an entry may use "*" for a subdomain,
+// e.g. "https://*.netlify.app" covers Netlify deploy previews whose hostnames change per build.
+static bool MatchesOrigin(string origin, string allowed)
+{
+    if (string.Equals(origin, allowed, StringComparison.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    if (!allowed.Contains('*'))
+    {
+        return false;
+    }
+
+    var pattern = "^" + Regex.Escape(allowed).Replace("\\*", ".*") + "$";
+    return Regex.IsMatch(origin, pattern, RegexOptions.IgnoreCase);
+}
 app.UseAuthentication();
 app.UseAuthorization();
 

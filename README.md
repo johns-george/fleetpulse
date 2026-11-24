@@ -34,6 +34,7 @@ The API ships as a Docker image (`Dockerfile` at the repo root); point Render at
 | `Jwt__Key` | `<random 32+ character string>` |
 | `Enrollment__Key` | `<random string>` |
 | `Cors__AllowedOrigins__0` | `https://<your-netlify-site>.netlify.app` |
+| `Cors__AllowedOrigins__1` | `https://*.netlify.app` (covers deploy-preview URLs) |
 
 On Netlify, set the base directory to `src/fleetpulse-web` (it picks up `netlify.toml` for the build, publish directory and SPA redirect), and keep `apiBaseUrl` in `src/environments/environment.prod.ts` in sync with the Render URL before deploying.
 
@@ -283,7 +284,7 @@ The hub requires authentication. Admin connections join the `dashboard` group an
 | `Jwt:DeviceTokenExpiryDays` | `30` | Lifetime of an issued device token |
 | `Enrollment:Key` | `fleetpulse-demo-enrollment-key` | Shared demo key devices use to enroll |
 | `Admin:Username` / `Password` | `admin` / `Admin@123` | Demo account |
-| `Cors:AllowedOrigins` | `http://localhost:4200` | Angular dev server |
+| `Cors:AllowedOrigins` | `http://localhost:4200` | Allowed browser origins; `*` matches a subdomain (e.g. `https://*.netlify.app`) |
 | `Monitoring:OfflineThresholdSeconds` | `30` | Silence before a device is offline |
 | `Monitoring:ScanIntervalSeconds` | `5` | Offline sweep frequency |
 | `Demo:Enabled` | `false` | Simulate heartbeats in-process and auto-acknowledge commands (hosted demo) |
@@ -312,7 +313,7 @@ This is a demo, not a production MDM. The important shortcuts:
 
 - **`dotnet: command not found`** — install the .NET 8 SDK, or run the commands with the explicit path to your SDK (e.g. `./.dotnet/dotnet run`).
 - **Login says the API is unreachable** — start the API on port 5080, or change `API_BASE_URL` in `src/fleetpulse-web/src/app/core/api.config.ts`.
-- **CORS errors** — the Angular dev server must run on `http://localhost:4200`, or add your origin to `Cors:AllowedOrigins`.
+- **CORS errors** — the Angular dev server must run on `http://localhost:4200`, or add your origin to `Cors:AllowedOrigins`. Exact origins are required (no trailing slash); use a `*` entry such as `https://*.netlify.app` when a host changes per deploy, and note that edits to `appsettings.json` only take effect after the API is redeployed.
 - **`npm install` fails with `EACCES` on `~/.npm/_cacache`** — your npm cache has files npm can't rewrite. Use a project-local cache: `npm install --cache .npm-cache`.
 - **The simulator logs an enrollment-key error** — `FLEETPULSE_ENROLLMENT_KEY` must match `Enrollment:Key` in `appsettings.json`.
 - **An existing database is missing a table** (for example after a schema change) — `EnsureCreated` does not migrate. Delete `src/FleetPulse.Api/fleetpulse.db*` and restart the API, or drop and recreate the SQL Server database.
